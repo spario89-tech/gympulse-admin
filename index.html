@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GymPulse Admin">
+    <title>لوحة الإدارة والمحاسبة - GymPulse Pro</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%2310b981'/%3E%3Ctext x='50' y='68' font-size='56' font-weight='900' font-family='Arial' text-anchor='middle' fill='%23020617'%3EG%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%2310b981'/%3E%3Ctext x='50' y='68' font-size='56' font-weight='900' font-family='Arial' text-anchor='middle' fill='%23020617'%3EG%3C/text%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+        body { font-family: 'Cairo', sans-serif; background-color: #020617; }
+        .glass { background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.08); }
+    </style>
+</head>
+<body class="text-white min-h-screen p-4 md:p-6">
+
+    <!-- شاشة التفعيل لمرة واحدة فقط (تختفي نهائياً بعد قفل رمز النادي) -->
+    <div id="admin-setup-screen" class="hidden max-w-md mx-auto mt-10 glass p-7 rounded-3xl space-y-5 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-3xl mx-auto shadow-lg">
+            G
+        </div>
+        <div>
+            <h1 class="text-xl font-black text-white">تفعيل تطبيق الإدارة</h1>
+            <p class="text-xs text-amber-400 font-bold mt-1">⚠️ تنبيه: يُدخل رمز الصالة مرة واحدة فقط ويُقفل التطبيق عليها نهائياً.</p>
+        </div>
+        <div class="space-y-3 text-right text-xs">
+            <div>
+                <label class="text-slate-300 font-bold">اسم الصالة:</label>
+                <input type="text" id="setup-adm-gym-name" placeholder="مثال: نادي أونادا الرياضي" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 mt-1 text-white outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="text-slate-300 font-bold">رمز الصالة بالإنجليزية (Gym ID):</label>
+                <input type="text" id="setup-adm-gym-id" placeholder="مثال: onada_gym" style="direction: ltr;" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 mt-1 font-mono text-emerald-400 outline-none focus:border-emerald-500">
+            </div>
+        </div>
+        <button onclick="lockAdminGymIdentity()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3.5 rounded-2xl text-sm transition">
+            تفعيل وقفل الحساب نهائياً 🔒
+        </button>
+    </div>
+
+    <!-- لوحة الإدارة والمحاسبة الرئيسية -->
+    <div id="admin-main-dashboard" class="hidden max-w-6xl mx-auto space-y-6">
+        <header class="glass p-5 rounded-3xl flex flex-wrap justify-between items-center gap-4">
+            <div>
+                <h1 id="adm-gym-name" class="text-xl font-black text-emerald-400">لوحة الإدارة والتقارير المالية</h1>
+                <p class="text-xs text-slate-400 mt-0.5">رمز الصالة المقفل: <span id="adm-gym-id" class="font-mono text-white font-bold"></span> 🔒</p>
+            </div>
+            <button onclick="loadAdminDashboard()" id="btn-refresh-adm" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-5 py-2.5 rounded-2xl text-xs transition">🔄 تحديث البيانات</button>
+        </header>
+
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="glass p-5 rounded-3xl">
+                <p class="text-xs text-slate-400 font-bold">إجمالي المقبوضات</p>
+                <p id="stat-income" class="text-2xl font-black text-emerald-400 mt-1">0 ل.س</p>
+            </div>
+            <div class="glass p-5 rounded-3xl">
+                <p class="text-xs text-slate-400 font-bold">المصاريف التشغيلية</p>
+                <p id="stat-expenses" class="text-2xl font-black text-amber-400 mt-1">0 ل.س</p>
+            </div>
+            <div class="glass p-5 rounded-3xl">
+                <p class="text-xs text-slate-400 font-bold">صافي الصندوق</p>
+                <p id="stat-net" class="text-2xl font-black text-sky-400 mt-1">0 ل.س</p>
+            </div>
+            <div class="glass p-5 rounded-3xl">
+                <p class="text-xs text-slate-400 font-bold">الذمم عند المشتركين</p>
+                <p id="stat-debts" class="text-2xl font-black text-rose-400 mt-1">0 ل.س</p>
+            </div>
+        </section>
+
+        <section class="glass p-6 rounded-3xl space-y-3">
+            <div class="flex justify-between items-center">
+                <h2 class="text-base font-black text-white">📋 سجل الحركات المباشر (دخول، اشتراكات، مصاريف)</h2>
+                <span id="adm-last-sync" class="text-[11px] text-slate-500 font-mono"></span>
+            </div>
+            <div id="adm-logs-list" class="space-y-2 max-h-[460px] overflow-y-auto text-xs"></div>
+        </section>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://sxjtqjyyrqwevtmlwfwh.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4anRxanl5cnF3ZXZ0bWx3ZndoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNTUzMzcsImV4cCI6MjEwODkzMTMzN30.IbXuDbXwDTxnln6Ur1Z97tcv3YT7qPz3zdrPj8WCDVQ";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function initAdminApp() {
+            const lockedId = localStorage.getItem('admin_locked_gym_id');
+            const lockedName = localStorage.getItem('admin_locked_gym_name');
+
+            if (!lockedId) {
+                document.getElementById('admin-setup-screen').classList.remove('hidden');
+                document.getElementById('admin-main-dashboard').classList.add('hidden');
+            } else {
+                document.getElementById('admin-setup-screen').classList.add('hidden');
+                document.getElementById('admin-main-dashboard').classList.remove('hidden');
+                document.getElementById('adm-gym-name').innerText = `📊 إدارة ${lockedName || lockedId}`;
+                document.getElementById('adm-gym-id').innerText = lockedId;
+                loadAdminDashboard();
+            }
+        }
+
+        function lockAdminGymIdentity() {
+            const gymName = document.getElementById('setup-adm-gym-name').value.trim();
+            const gymId = document.getElementById('setup-adm-gym-id').value.trim().toLowerCase().replace(/\s+/g, '_');
+
+            if (!gymId) return alert("يرجى إدخال رمز الصالة بالإنجليزية!");
+
+            localStorage.setItem('admin_locked_gym_id', gymId);
+            localStorage.setItem('admin_locked_gym_name', gymName || gymId.toUpperCase());
+            initAdminApp();
+        }
+
+        async function loadAdminDashboard() {
+            const gymId = localStorage.getItem('admin_locked_gym_id');
+            if (!gymId) return;
+
+            const btn = document.getElementById('btn-refresh-adm');
+            if (btn) btn.innerText = "⏳ جاري المزامنة...";
+
+            let totalIncome = 0;
+            let totalExpenses = 0;
+            let totalDebts = 0;
+            let logsHtml = "";
+
+            try {
+                const { data: subs } = await supabaseClient
+                    .from('subscriptions')
+                    .select('paid_amount, remaining_amount')
+                    .eq('gym_id', gymId);
+
+                if (subs) {
+                    subs.forEach(s => {
+                        totalIncome += Number(s.paid_amount) || 0;
+                        totalDebts += Number(s.remaining_amount) || 0;
+                    });
+                }
+
+                const { data: exps } = await supabaseClient
+                    .from('expenses')
+                    .select('amount')
+                    .eq('gym_id', gymId);
+
+                if (exps) {
+                    exps.forEach(e => {
+                        totalExpenses += Number(e.amount) || 0;
+                    });
+                }
+
+                const { data: cloudLogs } = await supabaseClient
+                    .from('attendance_logs')
+                    .select('notes, created_at')
+                    .eq('gym_id', gymId)
+                    .order('created_at', { ascending: false })
+                    .limit(60);
+
+                if (cloudLogs && cloudLogs.length > 0) {
+                    logsHtml = cloudLogs.map(l => {
+                        const t = l.created_at
+                            ? new Date(l.created_at).toLocaleTimeString('ar-SY', { hour: '2-digit', minute: '2-digit' })
+                            : '';
+                        return `<div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex justify-between items-center gap-2"><span>${l.notes || ''}</span><span class="text-slate-500 font-mono shrink-0">${t}</span></div>`;
+                    }).join('');
+                }
+            } catch (e) {}
+
+            document.getElementById('stat-income').innerText = Number(totalIncome).toLocaleString() + ' ل.س';
+            document.getElementById('stat-expenses').innerText = Number(totalExpenses).toLocaleString() + ' ل.س';
+            document.getElementById('stat-net').innerText = Number(totalIncome - totalExpenses).toLocaleString() + ' ل.س';
+            document.getElementById('stat-debts').innerText = Number(totalDebts).toLocaleString() + ' ل.س';
+
+            const box = document.getElementById('adm-logs-list');
+            box.innerHTML = logsHtml || `<p class="text-slate-500 text-center py-6">لا توجد حركات مسجلة لهذه الصالة بعد.</p>`;
+
+            const syncEl = document.getElementById('adm-last-sync');
+            if (syncEl) syncEl.innerText = "آخر تحديث: " + new Date().toLocaleTimeString('ar-SY', { hour: '2-digit', minute: '2-digit' });
+
+            if (btn) btn.innerText = "🔄 تحديث البيانات";
+        }
+
+        window.onload = initAdminApp;
+    </script>
+</body>
+</html>
