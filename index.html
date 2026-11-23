@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#020617">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="GymPulse Admin">
     <title>لوحة الإدارة والمحاسبة - GymPulse Pro</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%2310b981'/%3E%3Ctext x='50' y='68' font-size='56' font-weight='900' font-family='Arial' text-anchor='middle' fill='%23020617'%3EG%3C/text%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%2310b981'/%3E%3Ctext x='50' y='68' font-size='56' font-weight='900' font-family='Arial' text-anchor='middle' fill='%23020617'%3EG%3C/text%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -20,28 +18,31 @@
 </head>
 <body class="text-white min-h-screen p-4 md:p-6">
 
-    <!-- شاشة التفعيل لمرة واحدة فقط (تختفي نهائياً بعد قفل رمز النادي) -->
+    <!-- شاشة التفعيل لمرة واحدة فقط (تتحقق من رمز الماستر وتسحب اسم الصالة) -->
     <div id="admin-setup-screen" class="hidden max-w-md mx-auto mt-10 glass p-7 rounded-3xl space-y-5 text-center">
-        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-3xl mx-auto shadow-lg">
-            G
-        </div>
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-black text-3xl mx-auto shadow-lg">G</div>
         <div>
             <h1 class="text-xl font-black text-white">تفعيل تطبيق الإدارة</h1>
-            <p class="text-xs text-amber-400 font-bold mt-1">⚠️ تنبيه: يُدخل رمز الصالة مرة واحدة فقط ويُقفل التطبيق عليها نهائياً.</p>
+            <p class="text-xs text-amber-400 font-bold mt-1">⚠️ تنبيه: يُدخل رمز الصالة المعتمد مرة واحدة فقط ويُقفل التطبيق عليها نهائياً.</p>
         </div>
         <div class="space-y-3 text-right text-xs">
             <div>
-                <label class="text-slate-300 font-bold">اسم الصالة:</label>
-                <input type="text" id="setup-adm-gym-name" placeholder="مثال: نادي أونادا الرياضي" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 mt-1 text-white outline-none focus:border-emerald-500">
-            </div>
-            <div>
                 <label class="text-slate-300 font-bold">رمز الصالة بالإنجليزية (Gym ID):</label>
-                <input type="text" id="setup-adm-gym-id" placeholder="مثال: onada_gym" style="direction: ltr;" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 mt-1 font-mono text-emerald-400 outline-none focus:border-emerald-500">
+                <input type="text" id="setup-adm-gym-id" onkeydown="if(event.key==='Enter') lockAdminGymIdentity()" placeholder="مثال: onada_gym" style="direction: ltr;" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 mt-1 text-center font-mono text-base text-emerald-400 outline-none focus:border-emerald-500">
             </div>
         </div>
-        <button onclick="lockAdminGymIdentity()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3.5 rounded-2xl text-sm transition">
-            تفعيل وقفل الحساب نهائياً 🔒
+        <button onclick="lockAdminGymIdentity()" id="btn-lock-adm" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3.5 rounded-2xl text-sm transition">
+            تحقق وتفعيل الحساب نهائياً 🔒
         </button>
+    </div>
+
+    <!-- شاشة إيقاف الترخيص (في حال إيقافه من الماستر) -->
+    <div id="admin-lock-screen" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass max-w-md w-full rounded-3xl p-8 text-center space-y-4 border-2 border-rose-500/50">
+            <div class="text-4xl">🔒</div>
+            <h2 class="text-xl font-black text-white">تم إيقاف ترخيص الصالة</h2>
+            <p class="text-xs text-slate-300">يرجى التواصل مع الإدارة الفنية لتجديد الاشتراك وتفعيل التطبيق.</p>
+        </div>
     </div>
 
     <!-- لوحة الإدارة والمحاسبة الرئيسية -->
@@ -73,9 +74,27 @@
             </div>
         </section>
 
+        <!-- قسم إدارة موظفي السكرتارية والاستقبال -->
+        <section class="glass p-6 rounded-3xl space-y-4">
+            <div>
+                <h2 class="text-base font-black text-indigo-400">👥 موظفو الاستقبال والسكرتارية</h2>
+                <p class="text-[11px] text-slate-400">أنشئ حساباً لكل موظف لتظهر العمليات باسمه في السجل</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
+                <input type="text" id="new-staff-name" placeholder="اسم الموظف (مثلاً: سارة)" class="bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white">
+                <input type="text" id="new-staff-user" style="direction: ltr;" placeholder="اسم المستخدم (sara)" class="bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 font-mono text-emerald-400">
+                <input type="text" id="new-staff-pass" style="direction: ltr;" placeholder="كلمة المرور (1234)" class="bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 font-mono text-white">
+                <button onclick="addReceptionStaff()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black py-2.5 rounded-xl transition">➕ إضافة موظف</button>
+            </div>
+
+            <div id="staff-list-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs pt-1"></div>
+        </section>
+
+        <!-- سجل الحركات المباشر بتوقيع الموظفين -->
         <section class="glass p-6 rounded-3xl space-y-3">
             <div class="flex justify-between items-center">
-                <h2 class="text-base font-black text-white">📋 سجل الحركات المباشر (دخول، اشتراكات، مصاريف)</h2>
+                <h2 class="text-base font-black text-white">📋 سجل الحركات المباشر (موقّع باسم الموظف المناوب)</h2>
                 <span id="adm-last-sync" class="text-[11px] text-slate-500 font-mono"></span>
             </div>
             <div id="adm-logs-list" class="space-y-2 max-h-[460px] overflow-y-auto text-xs"></div>
@@ -103,15 +122,78 @@
             }
         }
 
-        function lockAdminGymIdentity() {
-            const gymName = document.getElementById('setup-adm-gym-name').value.trim();
+        async function lockAdminGymIdentity() {
             const gymId = document.getElementById('setup-adm-gym-id').value.trim().toLowerCase().replace(/\s+/g, '_');
-
             if (!gymId) return alert("يرجى إدخال رمز الصالة بالإنجليزية!");
 
-            localStorage.setItem('admin_locked_gym_id', gymId);
-            localStorage.setItem('admin_locked_gym_name', gymName || gymId.toUpperCase());
+            const btn = document.getElementById('btn-lock-adm');
+            btn.innerText = "⏳ جاري التحقق...";
+
+            const { data: reg, error } = await supabaseClient
+                .from('gyms_registry')
+                .select('gym_id, gym_name, is_active')
+                .eq('gym_id', gymId)
+                .maybeSingle();
+
+            if (error || !reg) {
+                btn.innerText = "تحقق وتفعيل الحساب نهائياً 🔒";
+                return alert("❌ رمز الصالة غير مسجل لدى الإدارة الفنية!");
+            }
+
+            localStorage.setItem('admin_locked_gym_id', reg.gym_id);
+            localStorage.setItem('admin_locked_gym_name', reg.gym_name);
             initAdminApp();
+        }
+
+        async function addReceptionStaff() {
+            const gymId = localStorage.getItem('admin_locked_gym_id');
+            const staffName = document.getElementById('new-staff-name').value.trim();
+            const username = document.getElementById('new-staff-user').value.trim().toLowerCase();
+            const password = document.getElementById('new-staff-pass').value.trim();
+
+            if (!staffName || !username || !password) return alert("يرجى تعبئة اسم الموظف واليوزر وكلمة المرور!");
+
+            const { error } = await supabaseClient.from('gym_staff').insert([{
+                gym_id: gymId,
+                staff_name: staffName,
+                username: username,
+                password: password,
+                is_active: true
+            }]);
+
+            if (error) return alert("خطأ أثناء الإضافة: " + error.message);
+
+            document.getElementById('new-staff-name').value = '';
+            document.getElementById('new-staff-user').value = '';
+            document.getElementById('new-staff-pass').value = '';
+            loadStaffList();
+        }
+
+        async function deleteReceptionStaff(id, name) {
+            if (!confirm(`هل تريد حذف حساب الموظف "${name}"؟`)) return;
+            await supabaseClient.from('gym_staff').delete().eq('id', id);
+            loadStaffList();
+        }
+
+        async function loadStaffList() {
+            const gymId = localStorage.getItem('admin_locked_gym_id');
+            const { data: staff } = await supabaseClient.from('gym_staff').select('*').eq('gym_id', gymId);
+            const box = document.getElementById('staff-list-container');
+
+            if (!staff || !staff.length) {
+                box.innerHTML = `<p class="text-slate-500 col-span-full">لا يوجد موظفون مضافون بعد. أضف أول موظف من الحقول أعلاه.</p>`;
+                return;
+            }
+
+            box.innerHTML = staff.map(s => `
+                <div class="bg-slate-950 border border-slate-800 p-3 rounded-2xl flex justify-between items-center">
+                    <div>
+                        <p class="font-black text-white">${s.staff_name}</p>
+                        <p class="font-mono text-[11px] text-slate-400">User: <b class="text-emerald-400">${s.username}</b> | Pass: <b class="text-amber-300">${s.password}</b></p>
+                    </div>
+                    <button onclick="deleteReceptionStaff(${s.id}, '${s.staff_name}')" class="bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white px-2.5 py-1.5 rounded-xl font-bold">🗑️</button>
+                </div>
+            `).join('');
         }
 
         async function loadAdminDashboard() {
@@ -121,47 +203,35 @@
             const btn = document.getElementById('btn-refresh-adm');
             if (btn) btn.innerText = "⏳ جاري المزامنة...";
 
-            let totalIncome = 0;
-            let totalExpenses = 0;
-            let totalDebts = 0;
-            let logsHtml = "";
+            // التحقق من حالة ترخيص النادي
+            const { data: reg } = await supabaseClient.from('gyms_registry').select('is_active').eq('gym_id', gymId).maybeSingle();
+            if (reg && reg.is_active === false) {
+                document.getElementById('admin-lock-screen').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-lock-screen').classList.add('hidden');
+            }
+
+            loadStaffList();
+
+            let totalIncome = 0, totalExpenses = 0, totalDebts = 0, logsHtml = "";
 
             try {
-                const { data: subs } = await supabaseClient
-                    .from('subscriptions')
-                    .select('paid_amount, remaining_amount')
-                    .eq('gym_id', gymId);
+                const { data: subs } = await supabaseClient.from('subscriptions').select('paid_amount, remaining_amount').eq('gym_id', gymId);
+                if (subs) subs.forEach(s => { totalIncome += Number(s.paid_amount) || 0; totalDebts += Number(s.remaining_amount) || 0; });
 
-                if (subs) {
-                    subs.forEach(s => {
-                        totalIncome += Number(s.paid_amount) || 0;
-                        totalDebts += Number(s.remaining_amount) || 0;
-                    });
-                }
-
-                const { data: exps } = await supabaseClient
-                    .from('expenses')
-                    .select('amount')
-                    .eq('gym_id', gymId);
-
-                if (exps) {
-                    exps.forEach(e => {
-                        totalExpenses += Number(e.amount) || 0;
-                    });
-                }
+                const { data: exps } = await supabaseClient.from('expenses').select('amount').eq('gym_id', gymId);
+                if (exps) exps.forEach(e => { totalExpenses += Number(e.amount) || 0; });
 
                 const { data: cloudLogs } = await supabaseClient
                     .from('attendance_logs')
                     .select('notes, created_at')
                     .eq('gym_id', gymId)
                     .order('created_at', { ascending: false })
-                    .limit(60);
+                    .limit(80);
 
                 if (cloudLogs && cloudLogs.length > 0) {
                     logsHtml = cloudLogs.map(l => {
-                        const t = l.created_at
-                            ? new Date(l.created_at).toLocaleTimeString('ar-SY', { hour: '2-digit', minute: '2-digit' })
-                            : '';
+                        const t = l.created_at ? new Date(l.created_at).toLocaleTimeString('ar-SY', { hour: '2-digit', minute: '2-digit' }) : '';
                         return `<div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex justify-between items-center gap-2"><span>${l.notes || ''}</span><span class="text-slate-500 font-mono shrink-0">${t}</span></div>`;
                     }).join('');
                 }
@@ -172,12 +242,8 @@
             document.getElementById('stat-net').innerText = Number(totalIncome - totalExpenses).toLocaleString() + ' ل.س';
             document.getElementById('stat-debts').innerText = Number(totalDebts).toLocaleString() + ' ل.س';
 
-            const box = document.getElementById('adm-logs-list');
-            box.innerHTML = logsHtml || `<p class="text-slate-500 text-center py-6">لا توجد حركات مسجلة لهذه الصالة بعد.</p>`;
-
-            const syncEl = document.getElementById('adm-last-sync');
-            if (syncEl) syncEl.innerText = "آخر تحديث: " + new Date().toLocaleTimeString('ar-SY', { hour: '2-digit', minute: '2-digit' });
-
+            document.getElementById('adm-logs-list').innerHTML = logsHtml || `<p class="text-slate-500 text-center py-6">لا توجد حركات مسجلة لهذه الصالة بعد.</p>`;
+            document.getElementById('adm-last-sync').innerText = "آخر تحديث: " + new Date().toLocaleTimeString('ar-SY', { hour: '2-digit', minute: '2-digit' });
             if (btn) btn.innerText = "🔄 تحديث البيانات";
         }
 
